@@ -1,0 +1,6 @@
+{
+  "name": "Assignment Help Portal",
+  "description": "An assignment help platform for university students to request tutoring, upload assignments, chat with tutors, and make secure payments.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
