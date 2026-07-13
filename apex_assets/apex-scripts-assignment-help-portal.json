@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "name": "create-user-profiles-after_user_create",
+    "trigger_type": "after_user_create",
+    "target_collection": "",
+    "code": "/**\n * Hook Trigger: after_user_create\n * Description: Fetches full user details (including metadata) and seeds the profile collection.\n */\nexport default async function(req) {\n  const eventData = req.data; // { id: number, email: string, role: string }\n  \n  // 1. Fetch full user object to obtain the registration metadata\n  const user = await $db.users.get(eventData.email);\n  if (!user) {\n    console.error(`[after_user_create] Unable to resolve user details for email: ${eventData.email}`);\n    return;\n  }\n\n  const meta = user.metadata || {};\n\n  // 2. Prepare the users_profiles record payload\n  const profilePayload = {\n    user_id: user.id, // Relational owner field linking to the core user\n    email: user.email,\n    name: meta.name || user.email.split('@')[0],\n    role: user.role,\n    avatar: meta.avatar || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.id}`,\n    bio: meta.bio || '',\n    expertise: meta.expertise || [],\n    hourlyRate: Number(meta.hourlyRate) || 35,\n    completedTasks: 0,\n    balance: user.role === 'student' ? 300 : 0, // Balance initialization\n    reviewsCount: 0,\n    enrolledCourseIds: []\n  };\n\n  // 3. Create the record in the users_profiles collection\n  try {\n    const newProfile = await $db.records.create('users_profiles', profilePayload);\n    console.log(`[after_user_create] Successfully seeded users_profiles record (ID: ${newProfile.id}) for user_id: ${user.id}`);\n  } catch (err) {\n    console.error(`[after_user_create] Failed to seed users_profiles collection: ${err}`);\n  }\n}",
+    "active": true,
+    "visibility": "private"
+  }
+]
