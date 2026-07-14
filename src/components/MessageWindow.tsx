@@ -119,7 +119,8 @@ export default function MessageWindow() {
           </div>
         ) : (
           messages.map((msg) => {
-            const isSelf = msg.senderId === currentUser?.id;
+            // THE FIX: Safe type-coerced comparison for sender alignment
+            const isSelf = String(msg.senderId) === String(currentUser?.id);
             return (
               <div
                 key={msg.id}
@@ -184,14 +185,15 @@ export default function MessageWindow() {
                         }`}
                         title="Download Attachment"
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-4.5 h-4.5" />
                       </a>
                     </div>
                   )}
                 </div>
 
                 <span className="text-[9px] text-slate-400 dark:text-slate-500 mt-1 mx-2">
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {/* THE FIX: Fallback to msg.created for correct system timestamp parsing */}
+                  {new Date(msg?.created || msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             );

@@ -66,13 +66,8 @@ export default function AssignmentCard({
     e.preventDefault();
     if (solutionFiles.length === 0) return;
 
-    const solutionUrls = solutionFiles.map((file) => ({
-      name: file.name,
-      url: URL.createObjectURL(file),
-      size: file.size,
-    }));
-
-    await markAssignmentCompleted(assignment.id, solutionUrls);
+    // Passes raw files directly to the centralized upload action
+    await markAssignmentCompleted(assignment.id, solutionFiles);
     setDeliveryModalOpen(false);
     setSolutionFiles([]);
   };

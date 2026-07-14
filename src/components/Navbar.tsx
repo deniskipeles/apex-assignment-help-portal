@@ -204,7 +204,7 @@ export default function Navbar({ onOpenDeposit, onOpenNewAssignment }: NavbarPro
 
             {/* Desktop Nav Links */}
             {isAuthenticated && (
-              <div className="hidden md:flex md:ml-10 space-x-1.5">
+              <div className="hidden lg:flex lg:ml-6 space-x-1.5">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -227,7 +227,7 @@ export default function Navbar({ onOpenDeposit, onOpenNewAssignment }: NavbarPro
           </div>
 
           {/* Right Side Desktop Controls */}
-          <div className="hidden md:flex md:items-center md:gap-4">
+          <div className="hidden lg:flex lg:items-center lg:gap-4">
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
@@ -323,7 +323,7 @@ export default function Navbar({ onOpenDeposit, onOpenNewAssignment }: NavbarPro
           </div>
 
           {/* Mobile Menu Buttons */}
-          <div className="flex items-center md:hidden gap-2">
+          <div className="flex items-center lg:hidden gap-2">
             {/* Theme Toggle Mobile */}
             <button
               onClick={toggleTheme}
@@ -359,7 +359,7 @@ export default function Navbar({ onOpenDeposit, onOpenNewAssignment }: NavbarPro
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-100 bg-white px-4 pt-2 pb-6 space-y-4 shadow-lg absolute w-full left-0 transition-all duration-300">
+        <div className="lg:hidden border-t border-slate-100 bg-white px-4 pt-2 pb-6 space-y-4 shadow-lg absolute w-full left-0 transition-all duration-300">
           {isAuthenticated ? (
             <>
               {/* User Bio Card */}

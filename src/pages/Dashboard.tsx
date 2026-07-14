@@ -43,6 +43,7 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
     assignments,
     bids,
     tutors,
+    allProfiles,
     payments,
     activeChatRoomId,
     activeChatPartner,
@@ -182,50 +183,54 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
 
     const partnerIds = new Set<string>();
 
-    // 1. From payments
+    // 1. From payments (coercing database IDs to strings)
     payments
-      .filter(p => p.studentId === currentUser.id || p.tutorId === currentUser.id)
+      .filter(p => String(p.studentId) === String(currentUser.id) || String(p.tutorId) === String(currentUser.id))
       .forEach(p => {
-        partnerIds.add(currentUser.role === 'student' ? p.tutorId : p.studentId);
+        partnerIds.add(currentUser.role === 'student' ? String(p.tutorId) : String(p.studentId));
       });
 
     // 2. From assignments the user is involved in (assigned tutor or owner)
     assignments
-      .filter(a => a.studentId === currentUser.id || a.tutorId === currentUser.id)
+      .filter(a => String(a.studentId) === String(currentUser.id) || String(a.tutorId) === String(currentUser.id))
       .forEach(a => {
         if (currentUser.role === 'student' && a.tutorId) {
-          partnerIds.add(a.tutorId);
+          partnerIds.add(String(a.tutorId));
         } else if (currentUser.role === 'tutor' && a.studentId) {
-          partnerIds.add(a.studentId);
+          partnerIds.add(String(a.studentId));
         }
       });
 
     // 3. From bids
     if (currentUser.role === 'student') {
       // Find all tutors who placed bids on the student's assignments
-      const studentAssgnIds = assignments.filter(a => a.studentId === currentUser.id).map(a => a.id);
+      const studentAssgnIds = assignments
+        .filter(a => String(a.studentId) === String(currentUser.id))
+        .map(a => String(a.id));
       bids
-        .filter(b => studentAssgnIds.includes(b.assignmentId))
-        .forEach(b => partnerIds.add(b.tutorId));
+        .filter(b => studentAssgnIds.includes(String(b.assignmentId)))
+        .forEach(b => partnerIds.add(String(b.tutorId)));
     } else {
       // Find all students whose assignments the tutor has bidded on
-      const tutorBiddedAssgnIds = bids.filter(b => b.tutorId === currentUser.id).map(b => b.assignmentId);
+      const tutorBiddedAssgnIds = bids
+        .filter(b => String(b.tutorId) === String(currentUser.id))
+        .map(b => String(b.assignmentId));
       assignments
-        .filter(a => tutorBiddedAssgnIds.includes(a.id))
-        .forEach(a => partnerIds.add(a.studentId));
+        .filter(a => tutorBiddedAssgnIds.includes(String(a.id)))
+        .forEach(a => partnerIds.add(String(a.studentId)));
     }
 
     // 4. Active chat partner
     if (activeChatPartner) {
-      partnerIds.add(activeChatPartner.id);
+      partnerIds.add(String(activeChatPartner.id));
     }
 
-    // Retrieve full profiles
-    const profiles: any[] = JSON.parse(localStorage.getItem('users_profiles') || '[]');
+    // Retrieve full profiles directly from our updated allProfiles store array
+    const profiles = allProfiles;
     return Array.from(partnerIds)
-      .map(id => profiles.find((p: any) => p.id === id))
-      .filter((p): p is any => !!p && p.id !== currentUser.id);
-  }, [currentUser, payments, assignments, bids, activeChatPartner]);
+      .map(id => profiles.find((p: any) => String(p.id) === String(id)))
+      .filter((p): p is any => !!p && String(p.id) !== String(currentUser.id));
+  }, [currentUser, payments, assignments, bids, activeChatPartner, allProfiles]);
 
   const filteredChats = useMemo(() => {
     if (!searchChatQuery.trim()) return recentConversations;
@@ -999,7 +1004,7 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
                 // Submit review details first
                 await handlePostReview(e);
                 // Release actual payment from escrow to tutor balance
-                const targetAssignment = assignments.find(a => a.tutorId === selectedTutorToReview.id && a.status === 'completed');
+                const targetAssignment = assignments.find(a => String(a.tutorId) === String(selectedTutorToReview.id) && a.status === 'completed');
                 if (targetAssignment) {
                   await releasePayment(targetAssignment.id);
                 }

@@ -1,4 +1,3 @@
-// =========================== apex-assignment-help-portal/src/store/useStore.ts start here ===========================
 import { create } from 'zustand';
 import { ApexKit, ApexKitRealtimeWSClient } from '../lib/apexClient';
 import { UserProfile, Assignment, Bid, Message, Course, Review, PaymentTransaction } from '../types';
@@ -22,6 +21,7 @@ interface AppState {
   bids: Bid[];
   messages: Message[];
   tutors: UserProfile[];
+  allProfiles: UserProfile[];
   reviews: Review[];
   payments: PaymentTransaction[];
 
@@ -44,7 +44,7 @@ interface AppState {
   submitBid: (assignmentId: string, amount: number, proposal: string) => Promise<void>;
   acceptBid: (assignmentId: string, bidId: string) => Promise<void>;
 
-  markAssignmentCompleted: (assignmentId: string, solutionUrls?: { name: string; url: string; size: number }[]) => Promise<void>;
+  markAssignmentCompleted: (assignmentId: string, solutionFiles?: File[]) => Promise<void>;
   releasePayment: (assignmentId: string) => Promise<void>;
 
   startChat: (tutorId: string, assignmentId?: string) => Promise<void>;
@@ -78,6 +78,7 @@ export const useStore = create<AppState>((set, get) => ({
   bids: [],
   messages: [],
   tutors: [],
+  allProfiles: [],
   reviews: [],
   payments: [],
 
@@ -239,14 +240,16 @@ export const useStore = create<AppState>((set, get) => ({
         updated: item.updated
       })) as unknown as Course[];
 
-      const tutors = (tutorsRes.items as any[])
-        .map(item => ({
-          id: String(item.id),
-          ...item.data,
-          created: item.created,
-          updated: item.updated
-        }))
-        .filter(u => u.role === 'tutor') as unknown as UserProfile[];
+      // Map ALL profiles (both students and tutors) from the database
+      const allProfiles = (tutorsRes.items as any[]).map(item => ({
+        id: String(item.id),
+        ...item.data,
+        created: item.created,
+        updated: item.updated
+      })) as unknown as UserProfile[];
+
+      // Filter only tutors from the fully resolved profile list
+      const tutors = allProfiles.filter(u => u.role === 'tutor');
 
       const assignments = (assignmentsRes.items as any[]).map(item => ({
         id: String(item.id),
@@ -282,6 +285,7 @@ export const useStore = create<AppState>((set, get) => ({
         isAuthenticated: !!profile,
         courses,
         tutors,
+        allProfiles,
         assignments,
         bids,
         reviews,
@@ -584,13 +588,29 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  markAssignmentCompleted: async (assignmentId, solutionUrls) => {
+  markAssignmentCompleted: async (assignmentId, solutionFiles) => {
     set({ isLoading: true });
     try {
+      const solutionUrls: { name: string; url: string; size: number }[] = [];
+      
+      // Upload each solution file to ApexKit storage
+      if (solutionFiles && solutionFiles.length > 0) {
+        for (const file of solutionFiles) {
+          const uploaded = await apex.files.upload(file);
+          solutionUrls.push({
+            name: uploaded.filename,
+            url: uploaded.url,
+            size: uploaded.size
+          });
+        }
+      }
+
+      // Commit the status and solution URLs to the assignments collection
       await apex.collection('assignments').update(assignmentId, {
         status: 'completed',
-        solutionUrls: solutionUrls || []
+        solutionUrls: solutionUrls
       });
+
       await get().fetchAssignments();
       set({ isLoading: false });
     } catch (err: any) {
@@ -604,13 +624,14 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const payments = get().payments;
-      const tx = payments.find(p => p.assignmentId === assignmentId && p.status === 'escrow');
-      if (!tx) throw new Error('Active escrow transaction not found');
+      // Execute the server-side Edge Function to securely process the balances transfer
+      const res = await apex.scripts.run('release-escrow', { assignmentId });
+      
+      if (res.error) {
+        throw new Error(res.error);
+      }
 
-      await apex.collection('payments').update(tx.id, { status: 'released' });
-      await apex.collection('assignments').update(assignmentId, { status: 'paid' });
-
+      // Synchronize the local UI state lists
       await get().fetchAssignments();
       
       const payRes = await apex.collection('payments').list();
@@ -889,4 +910,3 @@ export const useStore = create<AppState>((set, get) => ({
     }
   }
 }));
-// =========================== apex-assignment-help-portal/src/store/useStore.ts ends here ===========================
