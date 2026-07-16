@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { Message } from '../types';
-import { Send, FileText, Download, Upload, X, ShieldAlert, Sparkles, Eye } from 'lucide-react';
+import { Send, FileText, Download, Upload, X, ShieldAlert, Sparkles, Eye, ShieldCheck } from 'lucide-react';
 import SecureDocumentViewer from './SecureDocumentViewer';
 
 export default function MessageWindow() {
@@ -10,8 +10,8 @@ export default function MessageWindow() {
     messages,
     activeChatRoomId,
     activeChatPartner,
-    onlineUsers,
     sendMessage,
+    onlineUsers,
     isLoading
   } = useStore();
 
@@ -23,6 +23,19 @@ export default function MessageWindow() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState('');
 
+  // THE FIX: Sort messages ascending on the client side using id, falling back to created/createdAt
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort((a, b) => {
+      const idDiff = Number(a.id) - Number(b.id);
+      if (idDiff !== 0 && !isNaN(idDiff)) {
+        return idDiff;
+      }
+      const dateA = new Date(a.created || a.createdAt).getTime();
+      const dateB = new Date(b.created || b.createdAt).getTime();
+      return dateA - dateB;
+    });
+  }, [messages]);
+
   // Auto scroll to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -30,7 +43,7 @@ export default function MessageWindow() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [sortedMessages]); // Update dependency to sortedMessages
 
   if (!activeChatRoomId || !activeChatPartner) {
     return (
@@ -53,7 +66,6 @@ export default function MessageWindow() {
     const textToSend = inputText;
     const fileToSend = attachedFile;
 
-    // Reset inputs
     setInputText('');
     setAttachedFile(null);
 
@@ -74,9 +86,6 @@ export default function MessageWindow() {
     fileInputRef.current?.click();
   };
 
-  const lastSeen = onlineUsers[String(activeChatPartner?.id)];
-  const isOnline = lastSeen ? (Date.now() - lastSeen < 45000) : false;
-
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm" id="active_chat_window">
       {/* Chat Room Header */}
@@ -90,12 +99,10 @@ export default function MessageWindow() {
           <div>
             <div className="flex items-center gap-1.5">
               <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm leading-none heading-font">{activeChatPartner.name}</h4>
-              {/* THE FIX: Dynamic Header Dot */}
-              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
+              <span className={`w-2 h-2 rounded-full ${onlineUsers[String(activeChatPartner?.id)] && (Date.now() - onlineUsers[String(activeChatPartner?.id)] < 45000) ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 capitalize">
-              {/* THE FIX: Dynamic Active Online text */}
-              {activeChatPartner.role} • {isOnline ? 'Active Online' : 'Offline'}
+              {activeChatPartner.role} • {onlineUsers[String(activeChatPartner?.id)] && (Date.now() - onlineUsers[String(activeChatPartner?.id)] < 45000) ? 'Active Online' : 'Offline'}
             </p>
           </div>
         </div>
@@ -112,21 +119,20 @@ export default function MessageWindow() {
 
       {/* Safety Banner */}
       <div className="bg-sky-50 dark:bg-sky-950/20 px-4 py-2 text-[11px] text-sky-800 dark:text-sky-300 font-medium flex items-center gap-1.5 border-b border-sky-100 dark:border-sky-950">
-        <ShieldAlert className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+        <ShieldCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" />
         <span>Tutor contracts are safe. Keep conversations inside EduSolve to ensure escrow payment protection.</span>
       </div>
 
       {/* Messages Scroll Panel */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/40 dark:bg-slate-950/10 flex flex-col">
-        {messages.length === 0 ? (
+        {sortedMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6 text-slate-400 dark:text-slate-500 m-auto">
             <Sparkles className="w-5 h-5 text-sky-500 mb-2" />
             <p className="text-xs font-medium">No messages yet. Send a greeting to kick off the tutoring session!</p>
           </div>
         ) : (
-          // THE FIX: Reverse the messages array before mapping so oldest is at the top
-          [...messages].reverse().map((msg) => {
-            // Safe type-coerced comparison for sender alignment
+          // THE FIX: Render the pre-sorted list of messages ascending
+          sortedMessages.map((msg:any) => {
             const isSelf = String(msg.senderId) === String(currentUser?.id);
             return (
               <div

@@ -161,7 +161,7 @@ export const useStore = create<AppState>((set, get) => ({
             };
             activeWs.sendSignal('presence', 'UserOnline', realtimeObj);
           }
-        }, 2000);
+        }, 10000);
 
         (window as any).__onlineHeartbeatInterval = heartbeatInterval;
       }
