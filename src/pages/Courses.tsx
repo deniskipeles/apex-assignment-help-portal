@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import AssignmentCard from '../components/AssignmentCard';
-import { BookOpen, Code, Calculator, Atom, FlaskConical, ChevronRight, HelpCircle, ArrowUpRight, PlusCircle, Bookmark, BookmarkCheck, Check, Sparkles, GraduationCap, Pencil, Trash2, X } from 'lucide-react';
+import { BookOpen, Code, Calculator, Atom, FlaskConical, ChevronRight, HelpCircle, PlusCircle, Bookmark, BookmarkCheck, Check, Sparkles, GraduationCap, Pencil, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CoursesProps {
@@ -14,13 +14,15 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
     assignments, 
     isAuthenticated, 
     currentUser, 
+    courseCategories,
+    courseCodesList,
     updateProfile,
     createCourse,
     updateCourse,
     deleteCourse
   } = useStore();
 
-  const [selectedCourseId, setSelectedCourseId] = useState<string>('c1'); // Defaults to first course (CS 101)
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('c1'); 
   const [sidebarFilter, setSidebarFilter] = useState<'all' | 'active'>('all');
 
   // Course Form States for CRUD
@@ -32,6 +34,7 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
   const [isFormEditing, setIsFormEditing] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState('');
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [codeSuggestions, setCodeSuggestions] = useState<string[]>([]);
 
   // Form submit handler
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -65,7 +68,6 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
           courseFormDescription
         );
 
-        // Auto-select the newly created course!
         const updatedCourses = useStore.getState().courses;
         const newCourse = updatedCourses.find(c => c.code.toUpperCase() === courseFormCode.toUpperCase());
         if (newCourse) {
@@ -85,9 +87,8 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
     }
 
     try {
-      // Find next available course to select
-      const remainingCourses = courses.filter(c => c.id !== courseId);
-      if (remainingCourses.length > 0) {
+      const remainingCourses = courses.filter(c => String(c.id) !== String(courseId));
+      if (remainingCourses.length > 0 && remainingCourses[0]) {
         setSelectedCourseId(remainingCourses[0].id);
       } else {
         setSelectedCourseId('');
@@ -104,9 +105,10 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
     setIsFormEditing(false);
     setCourseFormCode('');
     setCourseFormName('');
-    setCourseFormCategory('Computer Science');
+    setCourseFormCategory(courseCategories[0] || 'Computer Science');
     setCourseFormIcon('Code');
     setCourseFormDescription('');
+    setCodeSuggestions([]);
     setIsFormModalOpen(true);
   };
 
@@ -119,7 +121,26 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
     setCourseFormCategory(course.category);
     setCourseFormIcon(course.iconName);
     setCourseFormDescription(course.description);
+    setCodeSuggestions([]);
     setIsFormModalOpen(true);
+  };
+
+  // Handle Course Code typing suggestions
+  const handleCodeTyping = (val: string) => {
+    setCourseFormCode(val);
+    if (val.trim().length > 0) {
+      const matched = courseCodesList.filter(c => 
+        c.toLowerCase().includes(val.toLowerCase())
+      );
+      setCodeSuggestions(matched.slice(0, 5));
+    } else {
+      setCodeSuggestions([]);
+    }
+  };
+
+  const handleSelectCodeSuggestion = (code: string) => {
+    setCourseFormCode(code);
+    setCodeSuggestions([]);
   };
 
   // Map icon strings to Lucide elements
@@ -144,7 +165,7 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
   const isCourseActive = (courseId: string, courseCode: string) => {
     if (!currentUser) return false;
     if (currentUser.role === 'student') {
-      return currentUser.enrolledCourseIds?.includes(courseId) || false;
+      return currentUser.enrolledCourseIds?.map(String).includes(String(courseId)) || false;
     } else {
       return currentUser.expertise?.includes(courseCode) || false;
     }
@@ -155,11 +176,11 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
     if (!currentUser) return;
     
     if (currentUser.role === 'student') {
-      const currentList = currentUser.enrolledCourseIds || [];
-      const isEnrolled = currentList.includes(courseId);
+      const currentList = currentUser.enrolledCourseIds?.map(String) || [];
+      const isEnrolled = currentList.includes(String(courseId));
       const newList = isEnrolled 
-        ? currentList.filter(id => id !== courseId)
-        : [...currentList, courseId];
+        ? currentList.filter(id => String(id) !== String(courseId))
+        : [...currentList, String(courseId)];
       
       await updateProfile({ enrolledCourseIds: newList });
     } else {
@@ -179,17 +200,11 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
     return isCourseActive(course.id, course.code);
   });
 
-  // Count active courses for the badge
   const activeCoursesCount = courses.filter(course => isCourseActive(course.id, course.code)).length;
 
-  const activeCourse = courses.find((c) => c.id === selectedCourseId) || courses[0];
-  const courseAssignments = assignments.filter((a) => a.courseId === selectedCourseId && a.status === 'open');
-
-  // Auto-adjust selected course if the currently selected one is not in the filtered list
-  const isSelectedVisible = displayedCourses.some(c => c.id === selectedCourseId);
-  const handleSelectCourse = (id: string) => {
-    setSelectedCourseId(id);
-  };
+  // STRICT Stringified ID lookup
+  const activeCourse = courses.find((c) => String(c.id) === String(selectedCourseId)) || courses[0];
+  const courseAssignments = assignments.filter((a) => String(a.courseId) === String(selectedCourseId) && a.status === 'open');
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" id="courses_department_page">
@@ -275,8 +290,9 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
                 </motion.div>
               ) : (
                 displayedCourses.map((course, idx) => {
-                  const isActive = course.id === selectedCourseId;
-                  const matchingCount = assignments.filter((a) => a.courseId === course.id && a.status === 'open').length;
+                  // STRICT Stringified comparison for selected course ID
+                  const isActive = String(course.id) === String(selectedCourseId);
+                  const matchingCount = assignments.filter((a) => String(a.courseId) === String(course.id) && a.status === 'open').length;
                   const isPinned = isCourseActive(course.id, course.code);
                   
                   return (
@@ -437,7 +453,7 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
                     {isAuthenticated && currentUser?.role === 'student' && (
                       <button
                         onClick={onOpenNewAssignment}
-                        className="bg-slate-950 dark:bg-slate-800 text-white text-xs px-4 py-2.5 rounded-xl mt-4 font-bold inline-flex items-center gap-1.5 hover:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer transition-colors shadow"
+                        className="bg-slate-950 dark:bg-slate-800 text-white text-xs px-4 py-2.5 rounded-xl mt-4 font-bold inline-flex items-center gap-1.5 hover:bg-slate-800 dark:hover:bg-slate-750 cursor-pointer transition-colors shadow"
                       >
                         <PlusCircle className="w-4 h-4" /> Create Help Request
                       </button>
@@ -463,7 +479,7 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] relative"
               id="course_form_modal_card"
             >
               {/* Header */}
@@ -486,7 +502,7 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
               <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
                 {/* Code & Name Row */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-1">
+                  <div className="col-span-1 relative">
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
                       Course Code *
                     </label>
@@ -495,9 +511,25 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
                       placeholder="e.g. CS 301"
                       required
                       value={courseFormCode}
-                      onChange={(e) => setCourseFormCode(e.target.value)}
+                      onChange={(e) => handleCodeTyping(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-100 px-3.5 py-2.5 rounded-xl outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-900 transition-all uppercase"
                     />
+                    
+                    {/* Auto-suggestions for course code */}
+                    {codeSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg z-50 overflow-hidden max-h-32">
+                        {codeSuggestions.map((code) => (
+                          <button
+                            key={code}
+                            type="button"
+                            onClick={() => handleSelectCodeSuggestion(code)}
+                            className="w-full text-left px-3 py-1.5 text-[10px] hover:bg-slate-50 dark:hover:bg-slate-850 font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                          >
+                            {code}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="col-span-2">
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
@@ -524,12 +556,11 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
                     onChange={(e) => setCourseFormCategory(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-100 px-3.5 py-2.5 rounded-xl outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-900 transition-all cursor-pointer"
                   >
-                    <option value="Computer Science" className="dark:bg-slate-900">Computer Science</option>
-                    <option value="Mathematics" className="dark:bg-slate-900">Mathematics</option>
-                    <option value="Science" className="dark:bg-slate-900">Science</option>
-                    <option value="Engineering" className="dark:bg-slate-900">Engineering</option>
-                    <option value="Business" className="dark:bg-slate-900">Business</option>
-                    <option value="Humanities" className="dark:bg-slate-900">Humanities</option>
+                    {courseCategories.map((cat) => (
+                      <option key={cat} value={cat} className="dark:bg-slate-900">
+                        {cat}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -545,7 +576,6 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
                       { name: 'Atom', icon: <Atom className="w-4 h-4" /> },
                       { name: 'FlaskConical', icon: <FlaskConical className="w-4 h-4" /> },
                       { name: 'BookOpen', icon: <BookOpen className="w-4 h-4" /> },
-                      { name: 'HelpCircle', icon: <HelpCircle className="w-4 h-4" /> },
                     ].map((item) => {
                       const isSelected = courseFormIcon === item.name;
                       return (
@@ -605,5 +635,8 @@ export default function Courses({ onOpenNewAssignment }: CoursesProps) {
 
     </div>
   );
-}
 
+  function handleSelectCourse(id: string) {
+    setSelectedCourseId(id);
+  }
+}

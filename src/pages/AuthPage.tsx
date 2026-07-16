@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore';
 import { GraduationCap, Lock, Mail, User, BookOpen, DollarSign, TextQuote, LogIn, UserPlus } from 'lucide-react';
 
 export default function AuthPage() {
-  const { login, register, error, isAuthenticated, isLoading } = useStore();
+  const { login, register, error, isAuthenticated, isLoading, expertiseList } = useStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
@@ -18,6 +18,7 @@ export default function AuthPage() {
   const [bio, setBio] = useState('');
   const [hourlyRate, setHourlyRate] = useState('35');
   const [expertise, setExpertise] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
     if (searchParams.get('register') === 'true') {
@@ -60,6 +61,35 @@ export default function AuthPage() {
       setPassword('password123');
       await login('tutor.aris@edu.com', 'password123');
     }
+  };
+
+  const handleExpertiseChange = (val: string) => {
+    setExpertise(val);
+    
+    // Split input by commas and get the active token being typed
+    const tokens = val.split(',').map((s) => s.trim());
+    const currentToken = tokens[tokens.length - 1] || '';
+
+    if (currentToken.length > 0) {
+      // Filter list to find matching, unselected course tags
+      const matched = expertiseList.filter(
+        (item) =>
+          item.toLowerCase().includes(currentToken.toLowerCase()) &&
+          !tokens.slice(0, -1).map((t) => t.toLowerCase()).includes(item.toLowerCase())
+      );
+      setSuggestions(matched.slice(0, 5)); // Limit to top 5 suggestions
+    } else {
+      setSuggestions([]);
+    }
+  };
+
+  const handleSelectSuggestion = (tag: string) => {
+    const tokens = expertise.split(',').map((s) => s.trim());
+    tokens[tokens.length - 1] = tag; // Replace the last token with the selected tag
+    
+    // Append a comma + space automatically for user convenience
+    setExpertise(tokens.join(', ') + ', '); 
+    setSuggestions([]);
   };
 
   return (
@@ -203,11 +233,27 @@ export default function AuthPage() {
                         type="text"
                         required
                         value={expertise}
-                        onChange={(e) => setExpertise(e.target.value)}
+                        onChange={(e) => handleExpertiseChange(e.target.value)}
                         className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-sky-500 pl-10 pr-4 py-2 rounded-xl outline-none text-xs text-slate-800 dark:text-slate-100 transition-all"
                         placeholder="Expertise codes (e.g. CS 101, MATH 201)"
                       />
                       <BookOpen className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+
+                      {/* Suggestions Dropdown overlay */}
+                      {suggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg z-50 overflow-hidden max-h-48">
+                          {suggestions.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => handleSelectSuggestion(tag)}
+                              className="w-full text-left px-3.5 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-850 font-medium cursor-pointer transition-colors"
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Bio */}

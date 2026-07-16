@@ -20,6 +20,9 @@ interface AppState {
   messages: Message[];
   tutors: UserProfile[];
   allProfiles: UserProfile[];
+  expertiseList: string[];
+  courseCategories: string[];
+  courseCodesList: string[];
   reviews: Review[];
   payments: PaymentTransaction[];
 
@@ -34,6 +37,8 @@ interface AppState {
   depositFunds: (amount: number) => Promise<void>;
 
   fetchAssignments: () => Promise<void>;
+  fetchExpertiseList: () => Promise<void>;
+  fetchCoursesMetadata: () => Promise<void>;
   createAssignment: (title: string, description: string, courseId: string, budget: number, deadline: string, files: File[]) => Promise<void>;
   cancelAssignment: (assignmentId: string) => Promise<void>;
 
@@ -73,6 +78,9 @@ export const useStore = create<AppState>((set, get) => ({
   messages: [],
   tutors: [],
   allProfiles: [],
+  expertiseList: [],
+  courseCategories: [],
+  courseCodesList: [],
   reviews: [],
   payments: [],
 
@@ -271,6 +279,9 @@ export const useStore = create<AppState>((set, get) => ({
         updated: item.updated
       })) as unknown as PaymentTransaction[];
 
+      await get().fetchExpertiseList();
+      await get().fetchCoursesMetadata();
+
       set({
         wsClient: ws,
         currentUser: profile,
@@ -426,6 +437,31 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  fetchExpertiseList: async () => {
+    try {
+      const res = await apex.scripts.run('get-unique-expertise', {});
+      if (res && res.expertise) {
+        set({ expertiseList: res.expertise });
+      }
+    } catch (err) {
+      console.error('Failed to fetch expertise list', err);
+    }
+  },
+
+  fetchCoursesMetadata: async () => {
+    try {
+      const res = await apex.scripts.run('get-courses-metadata', {});
+      if (res) {
+        set({
+          courseCategories: res.categories || ["Computer Science", "Mathematics", "Engineering"],
+          courseCodesList: res.codes || []
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch courses metadata', err);
+    }
+  },
+
   createAssignment: async (title, description, courseId, budget, deadline, files) => {
     const user = get().currentUser;
     if (!user || user.role !== 'student') throw new Error('Only students can create requests.');
@@ -527,53 +563,21 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const bid = get().bids.find(b => b.id === bidId);
-      const assignment = get().assignments.find(a => a.id === assignmentId);
-
-      if (!bid || !assignment) throw new Error('Contract files not found');
-      if ((student.balance || 0) < bid.amount) {
-        throw new Error('Insufficient wallet balance. Please add funds using the Payment Gateway first!');
+      // Execute the secure server-side Edge Function
+      const response = await apex.scripts.run('accept-bid', { assignmentId, bidId });
+      
+      const res = typeof response == "string" ? JSON.parse(response) : response;
+      if (res.error) {
+        throw new Error(res.error);
       }
 
-      const newStudentBalance = (student.balance || 0) - bid.amount;
-      await get().updateProfile({ balance: newStudentBalance });
-
-      const transaction = {
-        assignmentId,
-        assignmentTitle: assignment.title,
-        studentId: student.id,
-        studentName: student.name,
-        tutorId: bid.tutorId,
-        tutorName: bid.tutorName,
-        amount: bid.amount,
-        status: 'escrow',
-        stripePaymentId: 'ch_stripe_' + Math.random().toString(36).substr(2, 12),
-        createdAt: new Date().toISOString()
-      };
-      await apex.collection('payments').create(transaction);
-
-      await apex.collection('assignments').update(assignmentId, {
-        tutorId: bid.tutorId,
-        tutorName: bid.tutorName,
-        status: 'active'
-      });
-
-      await get().fetchAssignments();
-      const payRes = await apex.collection('payments').list();
-      const unfoldedPayments = (payRes.items as any[]).map(item => ({
-        id: String(item.id),
-        ...item.data,
-        created: item.created,
-        updated: item.updated
-      })) as unknown as PaymentTransaction[];
-
-      set({
-        payments: unfoldedPayments,
-        isLoading: false
-      });
-
-      await get().startChat(bid.tutorId, assignmentId);
-
+      // Synchronize the local UI state lists
+      await get().init();
+      
+      // Transition directly to the active chat with the assigned tutor
+      if (res.tutorId) {
+        await get().startChat(res.tutorId, assignmentId);
+      }
     } catch (err: any) {
       set({ isLoading: false, error: err.message || 'Payment or contract execution failed' });
       throw err;
