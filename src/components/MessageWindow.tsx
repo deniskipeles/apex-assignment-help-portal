@@ -10,6 +10,7 @@ export default function MessageWindow() {
     messages,
     activeChatRoomId,
     activeChatPartner,
+    onlineUsers,
     sendMessage,
     isLoading
   } = useStore();
@@ -73,6 +74,9 @@ export default function MessageWindow() {
     fileInputRef.current?.click();
   };
 
+  const lastSeen = onlineUsers[String(activeChatPartner?.id)];
+  const isOnline = lastSeen ? (Date.now() - lastSeen < 45000) : false;
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm" id="active_chat_window">
       {/* Chat Room Header */}
@@ -86,10 +90,12 @@ export default function MessageWindow() {
           <div>
             <div className="flex items-center gap-1.5">
               <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm leading-none heading-font">{activeChatPartner.name}</h4>
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              {/* THE FIX: Dynamic Header Dot */}
+              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`} />
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 capitalize">
-              {activeChatPartner.role} • Active online
+              {/* THE FIX: Dynamic Active Online text */}
+              {activeChatPartner.role} • {isOnline ? 'Active Online' : 'Offline'}
             </p>
           </div>
         </div>
@@ -111,15 +117,16 @@ export default function MessageWindow() {
       </div>
 
       {/* Messages Scroll Panel */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/40 dark:bg-slate-950/10">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/40 dark:bg-slate-950/10 flex flex-col">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-6 text-slate-400 dark:text-slate-500">
+          <div className="flex flex-col items-center justify-center h-full text-center p-6 text-slate-400 dark:text-slate-500 m-auto">
             <Sparkles className="w-5 h-5 text-sky-500 mb-2" />
             <p className="text-xs font-medium">No messages yet. Send a greeting to kick off the tutoring session!</p>
           </div>
         ) : (
-          messages.map((msg) => {
-            // THE FIX: Safe type-coerced comparison for sender alignment
+          // THE FIX: Reverse the messages array before mapping so oldest is at the top
+          [...messages].reverse().map((msg) => {
+            // Safe type-coerced comparison for sender alignment
             const isSelf = String(msg.senderId) === String(currentUser?.id);
             return (
               <div
@@ -134,11 +141,10 @@ export default function MessageWindow() {
                 )}
 
                 <div
-                  className={`max-w-[75%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-sm flex flex-col gap-2 ${
-                    isSelf
-                      ? 'bg-sky-600 text-white rounded-tr-none'
-                      : 'bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-200/60 dark:border-slate-800'
-                  }`}
+                  className={`max-w-[75%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-sm flex flex-col gap-2 ${isSelf
+                    ? 'bg-sky-600 text-white rounded-tr-none'
+                    : 'bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-200/60 dark:border-slate-800'
+                    }`}
                 >
                   {/* Chat Text */}
                   {msg.text && <p className="whitespace-pre-wrap">{msg.text}</p>}
@@ -146,11 +152,10 @@ export default function MessageWindow() {
                   {/* Render Message File attachment */}
                   {msg.file && (
                     <div
-                      className={`flex items-center gap-2.5 p-2 rounded-xl text-xs border ${
-                        isSelf
-                          ? 'bg-sky-700/50 border-sky-500/30 text-white'
-                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200'
-                      }`}
+                      className={`flex items-center gap-2.5 p-2 rounded-xl text-xs border ${isSelf
+                        ? 'bg-sky-700/50 border-sky-500/30 text-white'
+                        : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200'
+                        }`}
                     >
                       <FileText className="w-4.5 h-4.5 text-sky-500 shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -164,11 +169,10 @@ export default function MessageWindow() {
                           setSelectedFileName(msg.file!.name);
                           setViewerOpen(true);
                         }}
-                        className={`p-1.5 rounded-lg transition-colors shrink-0 ${
-                          isSelf
-                            ? 'hover:bg-sky-500/30 text-white'
-                            : 'hover:bg-sky-100 dark:hover:bg-sky-950/60 text-sky-600'
-                        }`}
+                        className={`p-1.5 rounded-lg transition-colors shrink-0 ${isSelf
+                          ? 'hover:bg-sky-500/30 text-white'
+                          : 'hover:bg-sky-100 dark:hover:bg-sky-950/60 text-sky-600'
+                          }`}
                         title="Read Securely"
                       >
                         <Eye className="w-4 h-4" />
@@ -178,11 +182,10 @@ export default function MessageWindow() {
                         download={msg.file.name}
                         target="_blank"
                         rel="noreferrer"
-                        className={`p-1.5 rounded-lg transition-colors shrink-0 ${
-                          isSelf
-                            ? 'hover:bg-sky-500/30 text-white'
-                            : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
-                        }`}
+                        className={`p-1.5 rounded-lg transition-colors shrink-0 ${isSelf
+                          ? 'hover:bg-sky-500/30 text-white'
+                          : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
                         title="Download Attachment"
                       >
                         <Download className="w-4.5 h-4.5" />

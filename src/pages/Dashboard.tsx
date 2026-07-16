@@ -44,6 +44,7 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
     bids,
     tutors,
     allProfiles,
+    onlineUsers,
     payments,
     activeChatRoomId,
     activeChatPartner,
@@ -60,7 +61,7 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
   // Selected sub-tabs in dashboard
   const [activeTab, setActiveTab] = useState<string>('active'); // active, open, completed, messages
   const [searchChatQuery, setSearchChatQuery] = useState('');
-  
+
   // Modals inside dashboard
   const [bidModalOpen, setBidModalOpen] = useState(false);
   const [selectedAssignmentToBid, setSelectedAssignmentToBid] = useState<Assignment | null>(null);
@@ -241,7 +242,7 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
   // Generate chart data for last 30 days completed assignments
   const completedAssignmentsChartData = useMemo(() => {
     if (currentUser?.role !== 'student') return [];
-    
+
     const data = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -275,11 +276,11 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" id="dashboard_panel">
-      
+
       {/* 1. Header Hero section */}
       <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8 border border-slate-800 shadow-xl relative overflow-hidden">
         <div className="absolute inset-0 bg-radial-gradient from-sky-950/20 to-transparent pointer-events-none" />
-        
+
         {/* User Card */}
         <div className="flex items-center gap-4 relative z-10">
           <img
@@ -337,59 +338,60 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
 
       {/* 2. Main Workspace Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
+
         {/* Left column sidebar profiles & utilities */}
         <div className="lg:col-span-3 space-y-6">
           {/* Quick info pane for students */}
           {currentUser?.role === 'student' ? (
             <>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-4">
-              <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm heading-font">Student Operations</h4>
-              <button
-                onClick={onOpenNewAssignment}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold rounded-xl text-xs shadow cursor-pointer transition-colors"
-              >
-                <PlusCircle className="w-4 h-4" />
-                Post Homework Help
-              </button>
-              <div className="bg-sky-50/50 dark:bg-sky-950/20 p-3 rounded-xl border border-sky-100 dark:border-sky-900/60 text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
-                Need exam preparation or homework review? Enter assignment guidelines and receive instant competitive bid quotes from vetted university tutors.
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-4">
+                <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm heading-font">Student Operations</h4>
+                <button
+                  onClick={onOpenNewAssignment}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-semibold rounded-xl text-xs shadow cursor-pointer transition-colors"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Post Homework Help
+                </button>
+                <div className="bg-sky-50/50 dark:bg-sky-950/20 p-3 rounded-xl border border-sky-100 dark:border-sky-900/60 text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
+                  Need exam preparation or homework review? Enter assignment guidelines and receive instant competitive bid quotes from vetted university tutors.
+                </div>
               </div>
-            </div>
-            
-            {/* 30-Day Activity Chart */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm heading-font">30-Day Activity</h4>
-                <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded uppercase tracking-wide border border-emerald-100 dark:border-emerald-900">Completed</span>
+
+              {/* 30-Day Activity Chart */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm heading-font">30-Day Activity</h4>
+                  <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded uppercase tracking-wide border border-emerald-100 dark:border-emerald-900">Completed</span>
+                </div>
+                {/* THE FIX: Added min-h-[160px] to prevent Recharts resize calculation warnings */}
+                <div className="h-40 min-h-[160px] w-full mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={completedAssignmentsChartData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="opacity-30" />
+                      <XAxis
+                        dataKey="dateStr"
+                        tick={{ fontSize: 9, fill: '#94a3b8' }}
+                        tickLine={false}
+                        axisLine={false}
+                        minTickGap={15}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fontSize: 9, fill: '#94a3b8' }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip
+                        cursor={{ fill: '#f1f5f9' }}
+                        contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 'bold', padding: '8px 12px', color: '#334155' }}
+                        labelStyle={{ color: '#64748b', marginBottom: '4px', fontSize: '10px', textTransform: 'uppercase' }}
+                      />
+                      <Bar dataKey="count" fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={8} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-              <div className="h-40 w-full mt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={completedAssignmentsChartData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="opacity-30" />
-                    <XAxis 
-                      dataKey="dateStr" 
-                      tick={{ fontSize: 9, fill: '#94a3b8' }} 
-                      tickLine={false} 
-                      axisLine={false}
-                      minTickGap={15}
-                    />
-                    <YAxis 
-                      allowDecimals={false} 
-                      tick={{ fontSize: 9, fill: '#94a3b8' }} 
-                      tickLine={false} 
-                      axisLine={false} 
-                    />
-                    <Tooltip 
-                      cursor={{ fill: '#f1f5f9' }}
-                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 'bold', padding: '8px 12px', color: '#334155' }}
-                      labelStyle={{ color: '#64748b', marginBottom: '4px', fontSize: '10px', textTransform: 'uppercase' }}
-                    />
-                    <Bar dataKey="count" fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={8} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
             </>
           ) : (
             // Tutor Bio editor
@@ -459,7 +461,7 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
                 Manage <ArrowUpRight className="w-3 h-3" />
               </Link>
             </div>
-            
+
             {myActiveCourses.length === 0 ? (
               <div className="bg-slate-50 dark:bg-slate-950/40 border border-dashed border-slate-200 dark:border-slate-800 p-4 rounded-xl text-center space-y-1">
                 <GraduationCap className="w-6 h-6 text-slate-300 dark:text-slate-700 mx-auto" />
@@ -519,30 +521,42 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
               </p>
             ) : (
               <div className="space-y-2">
-                {recentConversations.map((p: any) => (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      startChat(p.id);
-                      setActiveTab('messages');
-                    }}
-                    className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer ${
-                      activeChatPartner?.id === p.id && activeTab === 'messages'
+                {recentConversations.map((p: any) => {
+                  const isActive = activeChatPartner?.id === p.id;
+
+                  // Evaluate if user's last heartbeat is within 45 seconds
+                  const lastSeen = onlineUsers[String(p.id)];
+                  const isOnline = lastSeen ? (Date.now() - lastSeen < 45000) : false;
+
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        startChat(p.id);
+                        setActiveTab('messages');
+                      }}
+                      className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer ${isActive && activeTab === 'messages'
                         ? 'bg-sky-50 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900'
                         : 'hover:bg-slate-50 dark:hover:bg-slate-850/50 border border-transparent'
-                    }`}
-                  >
-                    <img
-                      src={p.avatar}
-                      alt={p.name}
-                      className="w-8.5 h-8.5 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate leading-none">{p.name}</h5>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 capitalize inline-block mt-1">{p.role}</span>
-                    </div>
-                  </button>
-                ))}
+                        }`}
+                    >
+                      <div className="relative shrink-0">
+                        <img
+                          src={p.avatar}
+                          alt={p.name}
+                          className="w-8.5 h-8.5 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
+                        />
+                        {/* THE FIX: Dynamic dot styling based on isOnline */}
+                        <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-900 ${isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                          }`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate leading-none">{p.name}</h5>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 capitalize inline-block mt-1">{p.role}</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -556,31 +570,28 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
               <>
                 <button
                   onClick={() => setActiveTab('active')}
-                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${
-                    activeTab === 'active'
-                      ? 'border-b-2 border-sky-600 text-sky-600'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
+                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${activeTab === 'active'
+                    ? 'border-b-2 border-sky-600 text-sky-600'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
                 >
                   Ongoing Tutoring ({studentActive.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('open')}
-                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${
-                    activeTab === 'open'
-                      ? 'border-b-2 border-sky-600 text-sky-600'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
+                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${activeTab === 'open'
+                    ? 'border-b-2 border-sky-600 text-sky-600'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
                 >
                   My Help Requests ({studentOpen.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('completed')}
-                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${
-                    activeTab === 'completed'
-                      ? 'border-b-2 border-sky-600 text-sky-600'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
+                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${activeTab === 'completed'
+                    ? 'border-b-2 border-sky-600 text-sky-600'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
                 >
                   Completed Solutions ({studentCompleted.length})
                 </button>
@@ -589,55 +600,50 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
               <>
                 <button
                   onClick={() => setActiveTab('active')}
-                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${
-                    activeTab === 'active'
-                      ? 'border-b-2 border-sky-600 text-sky-600'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
+                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${activeTab === 'active'
+                    ? 'border-b-2 border-sky-600 text-sky-600'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
                 >
                   My Active Classes ({tutorActive.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('open')}
-                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${
-                    activeTab === 'open'
-                      ? 'border-b-2 border-sky-600 text-sky-600'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
+                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${activeTab === 'open'
+                    ? 'border-b-2 border-sky-600 text-sky-600'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
                 >
                   Browse Open Markets ({tutorOpenMarket.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('proposals')}
-                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${
-                    activeTab === 'proposals'
-                      ? 'border-b-2 border-sky-600 text-sky-600'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
+                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${activeTab === 'proposals'
+                    ? 'border-b-2 border-sky-600 text-sky-600'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
                 >
                   My Placed Proposals ({tutorProposals.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('completed')}
-                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${
-                    activeTab === 'completed'
-                      ? 'border-b-2 border-sky-600 text-sky-600'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
+                  className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${activeTab === 'completed'
+                    ? 'border-b-2 border-sky-600 text-sky-600'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
                 >
                   Earned Commissions ({tutorCompleted.length})
                 </button>
               </>
             )}
-            
+
             {/* Messages tab as extra route toggle */}
             <button
               onClick={() => setActiveTab('messages')}
-              className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${
-                activeTab === 'messages'
-                  ? 'border-b-2 border-sky-600 text-sky-600'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
+              className={`pb-3 text-sm font-semibold tracking-tight cursor-pointer transition-all ${activeTab === 'messages'
+                ? 'border-b-2 border-sky-600 text-sky-600'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
             >
               Direct Chats Workspace
             </button>
@@ -647,11 +653,11 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
 
           {/* 1. Chats Workspace view tab */}
           {activeTab === 'messages' ? (
-            <div className="bg-slate-50/50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden h-[600px] shadow-sm flex" id="dashboard_messages_container">
+            // THE FIX: Changed h-[600px] to min-h-[500px] max-h-[75vh] flex-1 to allow mobile responsiveness
+            <div className="bg-slate-50/50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden min-h-[500px] max-h-[75vh] flex-1 shadow-sm flex flex-col md:flex-row" id="dashboard_messages_container">
               {/* Chats Sidebar - Visible on desktop, or on mobile when no active partner is selected */}
-              <div className={`w-full md:w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 ${
-                activeChatPartner ? 'hidden md:flex' : 'flex'
-              }`}>
+              <div className={`w-full md:w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 ${activeChatPartner ? 'hidden md:flex' : 'flex'
+                }`}>
                 {/* Sidebar Header */}
                 <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/80">
                   <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm heading-font flex items-center gap-2">
@@ -660,7 +666,7 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
                   </h3>
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Direct chat with active tutors and candidates</p>
                 </div>
-                
+
                 {/* Chats Search/Filter */}
                 <div className="p-3 border-b border-slate-150 dark:border-slate-800">
                   <div className="relative">
@@ -685,15 +691,19 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
                   ) : (
                     filteredChats.map((p) => {
                       const isActive = activeChatPartner?.id === p.id;
+
+                      // THE FIX: Evaluate if this specific user has a fresh heartbeat
+                      const lastSeen = onlineUsers[String(p.id)];
+                      const isOnline = lastSeen ? (Date.now() - lastSeen < 45000) : false;
+
                       return (
                         <button
                           key={p.id}
                           onClick={() => startChat(p.id)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-all cursor-pointer relative group ${
-                            isActive
-                              ? 'bg-sky-50 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/60'
-                              : 'hover:bg-slate-50 dark:hover:bg-slate-850/40 border border-transparent'
-                          }`}
+                          className={`w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-all cursor-pointer relative group ${isActive
+                            ? 'bg-sky-50 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/60'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-850/40 border border-transparent'
+                            }`}
                         >
                           <div className="relative shrink-0">
                             <img
@@ -701,9 +711,11 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
                               alt={p.name}
                               className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
                             />
-                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" />
+                            {/* THE FIX: Dynamic status dot inside the Conversations tab view */}
+                            <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-900 ${isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                              }`} />
                           </div>
-                          
+
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1">
                               <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate heading-font leading-tight group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
@@ -717,7 +729,7 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
                               {p.bio || "No description provided"}
                             </p>
                           </div>
-                          
+
                           {isActive && (
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-sky-500" />
                           )}
@@ -729,9 +741,8 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
               </div>
 
               {/* Chat Area - Visible on desktop, or on mobile when an active partner is selected */}
-              <div className={`flex-1 h-full relative ${
-                !activeChatPartner ? 'hidden md:flex' : 'flex'
-              }`}>
+              <div className={`flex-1 h-full relative ${!activeChatPartner ? 'hidden md:flex' : 'flex'
+                }`}>
                 {activeChatPartner ? (
                   <div className="w-full h-full relative flex flex-col">
                     {/* Header injector with Back button for mobile */}
@@ -1033,9 +1044,8 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
                       className="p-1 cursor-pointer transition-transform hover:scale-110"
                     >
                       <Star
-                        className={`w-7 h-7 ${
-                          star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-slate-200 dark:text-slate-700'
-                        }`}
+                        className={`w-7 h-7 ${star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-slate-200 dark:text-slate-700'
+                          }`}
                       />
                     </button>
                   ))}

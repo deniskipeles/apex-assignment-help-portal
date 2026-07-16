@@ -7,6 +7,7 @@ let apex: ApexKit = new ApexKit("https://kipeles-vs--5000.hf.space").tenant('ape
 interface AppState {
   apex: ApexKit;
   wsClient: ApexKitRealtimeWSClient | null;
+  chatWsClient: ApexKitRealtimeWSClient | null;
   currentUser: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -21,6 +22,7 @@ interface AppState {
   tutors: UserProfile[];
   allProfiles: UserProfile[];
   expertiseList: string[];
+  onlineUsers: Record<string, number>;
   courseCategories: string[];
   courseCodesList: string[];
   reviews: Review[];
@@ -65,6 +67,7 @@ interface AppState {
 export const useStore = create<AppState>((set, get) => ({
   apex,
   wsClient: null,
+  chatWsClient: null,
   currentUser: null,
   isAuthenticated: false,
   isLoading: false,
@@ -79,6 +82,7 @@ export const useStore = create<AppState>((set, get) => ({
   tutors: [],
   allProfiles: [],
   expertiseList: [],
+  onlineUsers: {},
   courseCategories: [],
   courseCodesList: [],
   reviews: [],
@@ -109,8 +113,8 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const status = typeof apex.getTenantStatus === 'function' 
-        ? apex.getTenantStatus() 
+      const status = typeof apex.getTenantStatus === 'function'
+        ? apex.getTenantStatus()
         : { tenantId: 'root', fallbackActive: false };
 
       set({
@@ -120,47 +124,44 @@ export const useStore = create<AppState>((set, get) => ({
       const token = apex.getToken();
       let ws: ApexKitRealtimeWSClient | null = null;
       if (token) {
-        // Safe clear old heartbeat timer if already registered
+        // Clear old heartbeat interval if already registered
         if ((window as any).__onlineHeartbeatInterval) {
           clearInterval((window as any).__onlineHeartbeatInterval);
           (window as any).__onlineHeartbeatInterval = null;
         }
 
+        // Initialize the Global Presence Connection
         ws = new ApexKitRealtimeWSClient(apex.baseUrl, token);
         ws.connect();
-        
+
+        // Subscribe permanently to the global presence channel on this socket
+        ws.subscribe({ channel: 'presence', customEvent: 'UserOnline' });
+
         ws.onEvent((msg: any) => {
-          // Correctly map and handle 'Custom' DbEvent sent by the ApexKit back-end
-          if (msg.type === 'Custom' && msg.payload?.event === 'NewMessage') {
-            const receivedMsg = msg.payload.data as Message;
-            
-            // Only append the message if it corresponds to the currently viewed room
-            const currentRoomId = get().activeChatRoomId;
-            if (currentRoomId && receivedMsg.chatRoomId === currentRoomId) {
-              set((state) => {
-                const updatedMessages = [...state.messages];
-                if (!updatedMessages.some(m => m.id === receivedMsg.id)) {
-                  updatedMessages.push(receivedMsg);
-                }
-                return { messages: updatedMessages };
-              });
-            }
+          if (msg.type === 'Custom' && msg.payload?.event === 'UserOnline') {
+            const presence = msg.payload.data;
+            set((state) => {
+              const nextOnline = { ...state.onlineUsers };
+              nextOnline[String(presence.userId)] = Date.now();
+              return { onlineUsers: nextOnline };
+            });
           }
         });
 
-        // Seed online status WS Signal every 20 seconds
+        // Broadcast presence signals over the global wsClient
         const heartbeatInterval = setInterval(() => {
           const activeWs = get().wsClient;
           const user = get().currentUser;
           if (activeWs && activeWs.isConnected && user) {
-            activeWs.sendSignal('presence', 'UserOnline', {
+            const realtimeObj = {
               userId: user.id,
               name: user.name,
               role: user.role,
               timestamp: new Date().toISOString()
-            });
+            };
+            activeWs.sendSignal('presence', 'UserOnline', realtimeObj);
           }
-        }, 20000);
+        }, 2000);
 
         (window as any).__onlineHeartbeatInterval = heartbeatInterval;
       }
@@ -284,6 +285,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       set({
         wsClient: ws,
+        chatWsClient: ws,
         currentUser: profile,
         isAuthenticated: !!profile,
         courses,
@@ -307,7 +309,7 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const res = await apex.auth.login(email, password);
       apex.setToken(res.token, res.user);
-      
+
       const userProfile: UserProfile = {
         id: res.user.id,
         email: res.user.email,
@@ -355,7 +357,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       const res = await apex.auth.register(email, password, metadata, role);
       apex.setToken(res.token, res.user);
-      
+
       set({ isLoading: false });
       return await get().login(email, password);
     } catch (err: any) {
@@ -369,6 +371,9 @@ export const useStore = create<AppState>((set, get) => ({
     if (get().wsClient) {
       get().wsClient?.disconnect();
     }
+    if (get().chatWsClient) {
+      get().chatWsClient?.disconnect(); // <--- ADD THIS
+    }
     if ((window as any).__onlineHeartbeatInterval) {
       clearInterval((window as any).__onlineHeartbeatInterval);
       (window as any).__onlineHeartbeatInterval = null;
@@ -377,6 +382,7 @@ export const useStore = create<AppState>((set, get) => ({
       currentUser: null,
       isAuthenticated: false,
       wsClient: null,
+      chatWsClient: null, // <--- ADD THIS
       messages: [],
       activeChatRoomId: null,
       activeChatPartner: null,
@@ -388,7 +394,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await apex.auth.updateMe(updates);
-      
+
       set((state) => ({
         currentUser: state.currentUser ? { ...state.currentUser, ...updates } : null,
         isLoading: false,
@@ -565,7 +571,7 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       // Execute the secure server-side Edge Function
       const response = await apex.scripts.run('accept-bid', { assignmentId, bidId });
-      
+
       const res = typeof response == "string" ? JSON.parse(response) : response;
       if (res.error) {
         throw new Error(res.error);
@@ -573,7 +579,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       // Synchronize the local UI state lists
       await get().init();
-      
+
       // Transition directly to the active chat with the assigned tutor
       if (res.tutorId) {
         await get().startChat(res.tutorId, assignmentId);
@@ -588,7 +594,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({ isLoading: true });
     try {
       const solutionUrls: { name: string; url: string; size: number }[] = [];
-      
+
       // Upload each solution file to ApexKit storage
       if (solutionFiles && solutionFiles.length > 0) {
         for (const file of solutionFiles) {
@@ -622,14 +628,14 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       // Execute the server-side Edge Function to securely process the balances transfer
       const res = await apex.scripts.run('release-escrow', { assignmentId });
-      
+
       if (res.error) {
         throw new Error(res.error);
       }
 
       // Synchronize the local UI state lists
       await get().fetchAssignments();
-      
+
       const payRes = await apex.collection('payments').list();
       const unfoldedPayments = (payRes.items as any[]).map(item => ({
         id: String(item.id),
@@ -647,7 +653,7 @@ export const useStore = create<AppState>((set, get) => ({
           updated: item.updated
         }))
         .filter(u => u.role === 'tutor') as unknown as UserProfile[];
-      
+
       set({
         payments: unfoldedPayments,
         tutors: unfoldedTutors,
@@ -666,7 +672,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     let chatRoomId = '';
     let partnerId = '';
-    
+
     if (user.role === 'student') {
       chatRoomId = `${user.id}_${tutorId}`;
       partnerId = tutorId;
@@ -695,14 +701,41 @@ export const useStore = create<AppState>((set, get) => ({
       activeChatPartner: partnerProfile || null
     });
 
-    // Automatically subscribe the client stream to the chatRoomId channel on chat activation
-    const ws = get().wsClient;
-    if (ws && ws.isConnected) {
-      ws.subscribe({
+    // Decoouple and initialize the dedicated conversational Chat WebSocket
+    let chatWs = get().chatWsClient;
+    if (chatWs) {
+      chatWs.disconnect(); // Terminate any existing conversational connection
+    }
+
+    const token = apex.getToken();
+    if (token) {
+      chatWs = new ApexKitRealtimeWSClient(apex.baseUrl, token);
+      chatWs.connect();
+
+      // Subscribe exclusively to messages on this separate connection
+      chatWs.subscribe({
         channel: chatRoomId,
         customEvent: 'NewMessage'
       });
+
+      chatWs.onEvent((msg: any) => {
+        if (msg.type === 'Custom' && msg.payload?.event === 'NewMessage') {
+          const receivedMsg = msg.payload.data as Message;
+          const currentRoomId = get().activeChatRoomId;
+          if (currentRoomId && receivedMsg.chatRoomId === currentRoomId) {
+            set((state) => {
+              const updatedMessages = [...state.messages];
+              if (!updatedMessages.some(m => m.id === receivedMsg.id)) {
+                updatedMessages.push(receivedMsg);
+              }
+              return { messages: updatedMessages };
+            });
+          }
+        }
+      });
     }
+
+    set({ chatWsClient: chatWs });
 
     await get().fetchMessages(chatRoomId);
   },
@@ -749,7 +782,6 @@ export const useStore = create<AppState>((set, get) => ({
         file: filePayload
       };
 
-      // Always persist message records in the central ledger first
       const now = new Date().toISOString();
       const savedMsg = await apex.collection('messages').create({
         ...msgData,
@@ -763,14 +795,13 @@ export const useStore = create<AppState>((set, get) => ({
         updated: savedMsg.updated
       } as unknown as Message;
 
-      // Render local state instantly to avoid latency
       set((state) => ({ messages: [...state.messages, unfoldedMsg] }));
 
-      // Broadcast the persisted record via WebSockets
-      if (get().wsClient && get().wsClient?.isConnected) {
-        get().wsClient?.sendSignal(room, 'NewMessage', unfoldedMsg);
+      // Broadcast exclusively over the conversational socket
+      const chatWs = get().chatWsClient;
+      if (chatWs && chatWs.isConnected) {
+        chatWs.sendSignal(room, 'NewMessage', unfoldedMsg);
       }
-
     } catch (err) {
       console.error('Failed to send message', err);
     }
@@ -809,7 +840,7 @@ export const useStore = create<AppState>((set, get) => ({
           updated: item.updated
         }))
         .filter(u => u.role === 'tutor') as unknown as UserProfile[];
-      
+
       set({
         reviews: unfoldedReviews,
         tutors: unfoldedTutors
