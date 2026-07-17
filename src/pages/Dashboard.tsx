@@ -653,10 +653,10 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
 
           {/* 1. Chats Workspace view tab */}
           {activeTab === 'messages' ? (
-            // THE FIX: Changed h-[600px] to min-h-[500px] max-h-[75vh] flex-1 to allow mobile responsiveness
-            <div className="bg-slate-50/50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden min-h-[500px] max-h-[75vh] flex-1 shadow-sm flex flex-col md:flex-row" id="dashboard_messages_container">
+            // THE FIX: Changed h-[600px] to a robust, responsive h-[550px] sm:h-[600px] and aligned breakpoint to lg
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden h-[550px] sm:h-[600px] w-full shadow-sm flex flex-col lg:flex-row" id="dashboard_messages_container">
               {/* Chats Sidebar - Visible on desktop, or on mobile when no active partner is selected */}
-              <div className={`w-full md:w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 ${activeChatPartner ? 'hidden md:flex' : 'flex'
+              <div className={`w-full lg:w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 ${activeChatPartner ? 'hidden lg:flex' : 'flex'
                 }`}>
                 {/* Sidebar Header */}
                 <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/80">
@@ -691,8 +691,8 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
                   ) : (
                     filteredChats.map((p) => {
                       const isActive = activeChatPartner?.id === p.id;
-
-                      // THE FIX: Evaluate if this specific user has a fresh heartbeat
+                      
+                      // Evaluate if this specific user has a fresh heartbeat
                       const lastSeen = onlineUsers[String(p.id)];
                       const isOnline = lastSeen ? (Date.now() - lastSeen < 45000) : false;
 
@@ -701,8 +701,8 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
                           key={p.id}
                           onClick={() => startChat(p.id)}
                           className={`w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-all cursor-pointer relative group ${isActive
-                            ? 'bg-sky-50 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/60'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-850/40 border border-transparent'
+                              ? 'bg-sky-50 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/60'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-850/40 border border-transparent'
                             }`}
                         >
                           <div className="relative shrink-0">
@@ -711,9 +711,9 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
                               alt={p.name}
                               className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
                             />
-                            {/* THE FIX: Dynamic status dot inside the Conversations tab view */}
-                            <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-900 ${isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
-                              }`} />
+                            <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-900 ${
+                              isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                            }`} />
                           </div>
 
                           <div className="flex-1 min-w-0">
@@ -741,12 +741,12 @@ export default function Dashboard({ onOpenDeposit, onOpenNewAssignment }: Dashbo
               </div>
 
               {/* Chat Area - Visible on desktop, or on mobile when an active partner is selected */}
-              <div className={`flex-1 h-full relative ${!activeChatPartner ? 'hidden md:flex' : 'flex'
+              <div className={`flex-1 h-full relative ${!activeChatPartner ? 'hidden lg:flex' : 'flex'
                 }`}>
                 {activeChatPartner ? (
                   <div className="w-full h-full relative flex flex-col">
                     {/* Header injector with Back button for mobile */}
-                    <div className="absolute top-4 left-4 z-50 md:hidden">
+                    <div className="absolute top-4 left-4 z-50 lg:hidden">
                       <button
                         type="button"
                         onClick={() => {

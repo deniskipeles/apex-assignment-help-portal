@@ -124,7 +124,8 @@ export default function MessageWindow() {
       </div>
 
       {/* Messages Scroll Panel */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/40 dark:bg-slate-950/10 flex flex-col">
+      {/* THE FIX: Added min-h-0 to enforce strict scroll behavior and contain the flex boundaries */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/40 dark:bg-slate-950/10 flex flex-col">
         {sortedMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6 text-slate-400 dark:text-slate-500 m-auto">
             <Sparkles className="w-5 h-5 text-sky-500 mb-2" />
@@ -257,20 +258,21 @@ export default function MessageWindow() {
           <Upload className="w-5 h-5" />
         </button>
 
-        {/* Text Area */}
+        {/* Text Area Input */}
         <input
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder={attachedFile ? "Add a file description..." : "Type dynamic query or homework specs..."}
-          className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-sky-500 focus:bg-white dark:focus:bg-slate-900 text-sm text-slate-800 dark:text-slate-100 px-4 py-2.5 rounded-2xl outline-none transition-all"
+          // THE FIX: Added w-full min-w-0 to allow the input to scale down safely on narrow mobile devices
+          className="flex-1 w-full min-w-0 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-sky-500 focus:bg-white dark:focus:bg-slate-900 text-sm text-slate-800 dark:text-slate-100 px-4 py-2.5 rounded-2xl outline-none transition-all"
         />
 
         {/* Send Button */}
         <button
           type="submit"
           disabled={!inputText.trim() && !attachedFile}
-          className="bg-sky-600 text-white p-2.5 rounded-2xl hover:bg-sky-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 shadow-md shadow-sky-500/10 cursor-pointer transition-colors shrink-0"
+          className="bg-sky-600 text-white p-2.5 rounded-2xl hover:bg-sky-700 disabled:bg-slate-200 dark:disabled:bg-slate-850 disabled:text-slate-400 shadow-md shadow-sky-500/10 cursor-pointer transition-colors shrink-0"
         >
           <Send className="w-4.5 h-4.5" />
         </button>

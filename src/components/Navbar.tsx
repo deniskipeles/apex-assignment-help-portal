@@ -65,8 +65,8 @@ export default function Navbar({ onOpenDeposit, onOpenNewAssignment }: NavbarPro
                       key={item.path}
                       to={item.path}
                       className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${isSelected(item.path)
-                          ? 'bg-sky-50 text-sky-600 shadow-sm'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-sky-50 text-sky-600 shadow-sm'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                     >
                       <Icon className="w-4 h-4" />
@@ -133,19 +133,21 @@ export default function Navbar({ onOpenDeposit, onOpenNewAssignment }: NavbarPro
 
                 {/* User card profile & Logout */}
                 <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={currentUser?.avatar}
-                      alt={currentUser?.name}
-                      className="w-8.5 h-8.5 rounded-full border border-slate-200 shadow-sm"
-                    />
-                    <div className="text-xs">
-                      <span className="font-medium text-slate-800 block">{currentUser?.name}</span>
-                      <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-md font-semibold uppercase tracking-wider block w-max mt-0.5">
-                        {currentUser?.role}
-                      </span>
+                  <Link to="/profile">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={currentUser?.avatar}
+                        alt={currentUser?.name}
+                        className="w-8.5 h-8.5 rounded-full border border-slate-200 shadow-sm"
+                      />
+                      <div className="text-xs">
+                        <span className="font-medium text-slate-800 block">{currentUser?.name}</span>
+                        <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-md font-semibold uppercase tracking-wider block w-max mt-0.5">
+                          {currentUser?.role}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
 
                   <button
                     onClick={handleLogout}
@@ -215,20 +217,22 @@ export default function Navbar({ onOpenDeposit, onOpenNewAssignment }: NavbarPro
           {isAuthenticated ? (
             <>
               {/* User Bio Card */}
-              <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl">
-                <img
-                  src={currentUser?.avatar}
-                  alt={currentUser?.name}
-                  className="w-10 h-10 rounded-full border border-slate-200"
-                />
-                <div>
-                  <h4 className="font-semibold text-slate-800 text-sm">{currentUser?.name}</h4>
-                  <p className="text-xs text-slate-400">{currentUser?.email}</p>
+              <Link to="/profile">
+                <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl">
+                  <img
+                    src={currentUser?.avatar}
+                    alt={currentUser?.name}
+                    className="w-10 h-10 rounded-full border border-slate-200"
+                  />
+                  <div>
+                    <h4 className="font-semibold text-slate-800 text-sm">{currentUser?.name}</h4>
+                    <p className="text-xs text-slate-400">{currentUser?.email}</p>
+                  </div>
+                  <span className="ml-auto text-[10px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                    {currentUser?.role}
+                  </span>
                 </div>
-                <span className="ml-auto text-[10px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                  {currentUser?.role}
-                </span>
-              </div>
+              </Link>
 
               {/* Mobile Balance View */}
               <div className="flex items-center justify-between bg-slate-50 px-4 py-3 rounded-2xl">
@@ -264,8 +268,8 @@ export default function Navbar({ onOpenDeposit, onOpenNewAssignment }: NavbarPro
                       to={item.path}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium ${isSelected(item.path)
-                          ? 'bg-sky-50 text-sky-600'
-                          : 'text-slate-600 hover:bg-slate-50'
+                        ? 'bg-sky-50 text-sky-600'
+                        : 'text-slate-600 hover:bg-slate-50'
                         }`}
                     >
                       <Icon className="w-5 h-5" />

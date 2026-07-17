@@ -13,6 +13,8 @@ import TutorProfiles from './pages/TutorProfiles';
 import Courses from './pages/Courses';
 import AuthPage from './pages/AuthPage';
 import React, { useEffect, useState } from 'react';
+import Footer from './components/Footer';
+import Profile from './pages/Profile';
 
 // Simple Route Protection Guard
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -62,7 +64,15 @@ function AppLayout() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<AuthPage />} />
-          
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/dashboard"
             element={
@@ -99,7 +109,7 @@ function AppLayout() {
 
       {/* Footer credits */}
       <footer className="bg-white dark:bg-slate-950 border-t border-slate-200/60 dark:border-slate-800/60 py-6 text-center text-xs text-slate-400 dark:text-slate-500 transition-colors duration-200">
-        <p>© {new Date().getFullYear()} EduSolve. All rights reserved. Powered by secure ApexKit ledger storage.</p>
+        <Footer />
       </footer>
 
       {/* Global Modals */}

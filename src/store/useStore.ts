@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { ApexKit, ApexKitRealtimeWSClient } from '../lib/apexClient';
 import { UserProfile, Assignment, Bid, Message, Course, Review, PaymentTransaction } from '../types';
 
-let apex: ApexKit = new ApexKit("https://kipeles-vs--5000.hf.space").tenant('apex-assignment-help') as ApexKit;
+export const apex: ApexKit = new ApexKit("https://kipeles-vs--5000.hf.space").tenant('apex-assignment-help') as ApexKit;
 
 interface AppState {
   apex: ApexKit;
